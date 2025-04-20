@@ -13,7 +13,7 @@ import requests
 
 gcp_key = json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
 with open("temp_gcp_key.json", "w") as f:
-     f.write(gcp_key)
+     json.dump(gcp_key, f)
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
 
 
