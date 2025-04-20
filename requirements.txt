@@ -9,3 +9,4 @@ uvicorn
 pydantic
 python-dotenv
 google-generativeai
+matplotlib
