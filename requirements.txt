@@ -1,7 +1,11 @@
+# For Streamlit frontend
+streamlit
+requests
+google-cloud-speech
+
+# For FastAPI backend (already present)
 fastapi
 uvicorn
 pydantic
 python-dotenv
 google-generativeai
-
-
