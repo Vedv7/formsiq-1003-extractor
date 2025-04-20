@@ -307,7 +307,7 @@ if st.session_state.show_extractor:
             start_time = time.time()
             with st.spinner("Analyzing transcript..."):
                 try:
-                    response = requests.post("http://127.0.0.1:8000/extract-fields", json={"transcript": transcript})
+                    response = requests.post("https://formsiq-1003-extractor.onrender.com/extract-fields", json={"transcript": transcript})
                     end_time = time.time()
                     st.session_state.response_time = round(end_time - start_time, 2)
                     if response.status_code == 200:
