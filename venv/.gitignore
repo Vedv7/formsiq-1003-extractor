@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+formsiq-gcloud-key.json
+.env
+temp_gcp_key.json
