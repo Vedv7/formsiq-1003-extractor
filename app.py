@@ -11,11 +11,24 @@ from streamlit_lottie import st_lottie
 import requests
 
 
-gcp_key = st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
-with open("temp_gcp_key.json", "w") as f:
-     json.dump(gcp_key, f)
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
+import os
+from google.cloud import speech
+from google.oauth2 import service_account  # <-- required for credentials
+import streamlit as st
+import json
 
+# ✅ FIXED: parse secret JSON string to a dict
+gcp_key = json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
+
+# Save to file for GCP
+with open("temp_gcp_key.json", "w") as f:
+    json.dump(gcp_key, f)
+
+# ✅ Create GCP credentials from file
+credentials = service_account.Credentials.from_service_account_file("temp_gcp_key.json")
+
+# ✅ Use credentials when creating the client
+client = speech.SpeechClient(credentials=credentials)
 
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
