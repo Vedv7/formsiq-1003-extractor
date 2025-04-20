@@ -14,7 +14,7 @@ import requests
 gcp_key = st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
 with open("temp_gcp_key.json", "w") as f:
     f.write(gcp_key)
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
 
 
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
