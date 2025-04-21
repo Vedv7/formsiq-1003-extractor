@@ -12,10 +12,8 @@ import requests
 
 
 
-with open("temp_gcp_key.json", "w") as f:
-    json.dump(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"], f)
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
-
+# Set path to existing key file
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "formsiq-gcloud-key.json"
 
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
