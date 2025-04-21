@@ -18,7 +18,8 @@ if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = "audio_upload"
 
 with open("temp_gcp_key.json", "w") as f:
-    json.dump(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"], f)
+    json.dump(json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]), f)
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
 
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
