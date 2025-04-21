@@ -10,18 +10,10 @@ import streamlit.components.v1 as components
 from streamlit_lottie import st_lottie
 import requests
 
-if "transcript" not in st.session_state:
-    st.session_state.transcript = ""
-if "audio_transcribed" not in st.session_state:
-    st.session_state.audio_transcribed = False
-if "uploader_key" not in st.session_state:
-    st.session_state.uploader_key = "audio_upload"
 
 with open("temp_gcp_key.json", "w") as f:
-    json.dump(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"], f)
+    json.dump(json.loads(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"]), f)
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
-
-st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
 
 
@@ -269,7 +261,8 @@ if st.session_state.show_extractor:
     
     
     elif method == "Upload Audio":
-        audio_file = st.file_uploader("Upload Call Audio", type=["wav", "mp3", "m4a"], key=st.session_state.uploader_key)
+        audio_file = st.file_uploader("Upload Call Audio", type=["wav", "mp3", "m4a"], key=st.session_state.get("uploader_key", "audio_upload"))
+
 
         if audio_file is not None:
             if not st.session_state.get("audio_transcribed"):
