@@ -11,9 +11,9 @@ from streamlit_lottie import st_lottie
 import requests
 
 
-gcp_key = st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
+
 with open("temp_gcp_key.json", "w") as f:
-     json.dump(gcp_key, f)
+    f.write(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]) 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
 
 
