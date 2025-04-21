@@ -12,11 +12,6 @@ import requests
 
 
 gcp_key = st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
-# Debug to confirm
-st.write("Secret type:", type(gcp_key))
-if isinstance(gcp_key, str):
-    gcp_key = json.loads(gcp_key)
-
 with open("temp_gcp_key.json", "w") as f:
      json.dump(gcp_key, f)
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
