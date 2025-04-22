@@ -1,13 +1,7 @@
-import json
 import os
 
-# Write the secret JSON string (from environment) to a temp file
-creds_path = "temp_gcp_key.json"
-with open(creds_path, "w") as f:
-    f.write(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
-
-# Point GCP SDKs to that file
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+# Tell GCP libraries where your static JSON key is
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/gcp-key.json"
 
 
 
@@ -22,77 +16,80 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 import json
-import google.generativeai as genai
+import vertexai
+from vertexai.language_models import TextGenerationModel
 
 import google.cloud.logging
-from google.cloud.logging_v2.handlers import setup_logging
+from google.cloud.logging.handlers import CloudLoggingHandler
 import logging
 
-try:
-    client = google.cloud.logging.Client()
-    setup_logging()
-    logging.info("✅ Google Cloud Logging initialized")
-except Exception as e:
-    logging.basicConfig(level=logging.INFO)
-    logging.warning(f"⚠️ GCP Logging disabled. Reason: {e}")
+# Initialize the client
+client = google.cloud.logging.Client()
 
+# Set up handler manually
+handler = CloudLoggingHandler(client)
 
-# Load API Key from .env
+# Apply to root logger
+logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().addHandler(handler)
+
+# Optional named logger (you can remove if not needed)
+logger = logging.getLogger("formsiq.extractor")
+
+# --- Vertex AI Init ---
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+vertexai.init(project="iconic-episode-256420", location="us-central1")
+MODEL = TextGenerationModel.from_pretrained("gemini-1.5-pro")
 
-app = FastAPI(title="Mortgage Field Extractor", description="Extracts 1003 loan fields using Gemini AI", version="1.0")
+# --- FastAPI Setup ---
+app = FastAPI(
+    title="Mortgage Field Extractor",
+    description="Extracts 1003 loan fields using Gemini AI",
+    version="1.0"
+)
 
-# Choose one of the available models
-def select_model():
-    available_models = [m.name for m in genai.list_models()]
-    logging.info(f"✅ Available Models: {available_models}")
-    for preferred in [
-        "models/gemini-1.5-flash-latest",
-        "models/gemini-2.0-flash-latest",
-        "models/gemini-1.5-pro-latest"
-    ]:
-        if preferred in available_models:
-            logging.info(f"✅ Selected Model: {preferred}")
-            return preferred
-    raise RuntimeError("❌ No suitable Gemini model found.")
-
-# Load model
-MODEL_NAME = select_model()
-MODEL = genai.GenerativeModel(model_name=MODEL_NAME)
-
-# Request body
+# --- Request Model ---
 class TranscriptInput(BaseModel):
     transcript: str
 
-# Response body
+# --- Response Model (optional Swagger doc clarity) ---
 class FieldResponse(BaseModel):
     status: str
     response: str
 
-@app.post("/extract-fields")
+# --- Endpoint ---
+@app.post("/extract-fields", response_model=FieldResponse)
 async def extract_fields(data: TranscriptInput):
+    logger.info("🔍 Received request for field extraction")
+
     try:
         prompt = generate_prompt()
-        full_prompt = prompt + "\n\n" + data.transcript
-        logging.info("📨 Sending prompt to model...")
-        response = MODEL.generate_content(full_prompt)
+        logger.debug("📋 Prompt generated")
+
+        response = MODEL.predict(
+            prompt + "\n\n" + data.transcript,
+            temperature=0.2,
+            max_output_tokens=1024
+        )
+        logger.info("🤖 Prediction returned from Gemini")
 
         try:
             parsed = json.loads(response.text)
+            logger.info("✅ Parsed response successfully")
         except json.JSONDecodeError:
             parsed = response.text
+            logger.warning("⚠️ Response not valid JSON. Raw response returned.")
 
-        logging.info("✅ Extraction completed.")
         return {
             "status": "success",
             "response": parsed
         }
 
     except Exception as e:
-        logging.error(f"❌ Error: {str(e)}")
+        logger.error(f"❌ Field extraction failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- Prompt ---
 def generate_prompt():
     return """
 You are an expert mortgage assistant trained to extract information for the 1003 Uniform Residential Loan Application form from customer service call transcripts.
