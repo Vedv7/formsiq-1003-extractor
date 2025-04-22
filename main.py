@@ -1,17 +1,17 @@
 import os
 import json
+import logging
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from dotenv import load_dotenv
+
+import google.cloud.logging
+from google.cloud.logging.handlers import CloudLoggingHandler
 
 import vertexai
 from vertexai.preview.generative_models import GenerativeModel
 
-import google.cloud.logging
-from google.cloud.logging.handlers import CloudLoggingHandler
-import logging
-
-# --- Auth fix for Render ---
+# --- Auth for Render ---
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/gcp-key.json"
 
 # --- Logging ---
@@ -21,10 +21,10 @@ logging.getLogger().setLevel(logging.INFO)
 logging.getLogger().addHandler(handler)
 logger = logging.getLogger("formsiq.extractor")
 
-# --- Vertex Init ---
+# --- Vertex AI Init ---
 load_dotenv()
 vertexai.init(project="iconic-episode-256420", location="us-central1")
-MODEL = GenerativeModel("gemini-1.5-flash")
+model = GenerativeModel("gemini-1.5-flash")  # Use flash or 1.5-pro only if access enabled
 
 # --- FastAPI ---
 app = FastAPI(
@@ -42,15 +42,15 @@ class FieldResponse(BaseModel):
 
 @app.post("/extract-fields", response_model=FieldResponse)
 async def extract_fields(data: TranscriptInput):
-    logger.info("🔍 Request received for field extraction")
+    logger.info("📥 Received transcript for extraction")
 
     try:
         prompt = generate_prompt()
-        response = MODEL.generate_content(prompt + "\n\n" + data.transcript)
+        response = model.generate_content(prompt + "\n\n" + data.transcript)
 
         try:
             parsed = json.loads(response.text)
-            logger.info("✅ Parsed successfully")
+            logger.info("✅ JSON parsed successfully")
         except json.JSONDecodeError:
             parsed = response.text
             logger.warning("⚠️ Response is not valid JSON")
@@ -61,8 +61,9 @@ async def extract_fields(data: TranscriptInput):
         }
 
     except Exception as e:
-        logger.error(f"❌ Error: {e}", exc_info=True)
+        logger.error(f"❌ Extraction failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
 
 def generate_prompt():
     return """
@@ -98,4 +99,5 @@ Respond strictly in raw JSON. Do NOT include any explanation or markdown. No ```
   ]
 }
 """
+
 
