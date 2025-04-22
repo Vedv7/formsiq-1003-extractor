@@ -9,9 +9,14 @@ import google.cloud.logging
 from google.cloud.logging_v2.handlers import setup_logging
 import logging
 
-# Initialize GCP logging
-client = google.cloud.logging.Client()
-setup_logging()
+try:
+    client = google.cloud.logging.Client()
+    setup_logging()
+    logging.info("✅ Google Cloud Logging initialized")
+except Exception as e:
+    logging.basicConfig(level=logging.INFO)
+    logging.warning(f"⚠️ GCP Logging disabled. Reason: {e}")
+
 
 # Load API Key from .env
 load_dotenv()
