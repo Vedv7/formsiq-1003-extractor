@@ -5,6 +5,14 @@ import os
 import json
 import google.generativeai as genai
 
+import google.cloud.logging
+from google.cloud.logging_v2.handlers import setup_logging
+import logging
+
+# Initialize GCP logging
+client = google.cloud.logging.Client()
+setup_logging()
+
 # Load API Key from .env
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
@@ -14,19 +22,16 @@ app = FastAPI(title="Mortgage Field Extractor", description="Extracts 1003 loan 
 # Choose one of the available models
 def select_model():
     available_models = [m.name for m in genai.list_models()]
-    print("✅ Available Models:", available_models)
-
-    # Prefer flash if you saw it working in console
+    logging.info(f"✅ Available Models: {available_models}")
     for preferred in [
         "models/gemini-1.5-flash-latest",
         "models/gemini-2.0-flash-latest",
         "models/gemini-1.5-pro-latest"
     ]:
         if preferred in available_models:
-            print(f"✅ Selected Model: {preferred}")
+            logging.info(f"✅ Selected Model: {preferred}")
             return preferred
-
-    raise RuntimeError("❌ No suitable Gemini model found. Available: " + ", ".join(available_models))
+    raise RuntimeError("❌ No suitable Gemini model found.")
 
 # Load model
 MODEL_NAME = select_model()
@@ -36,7 +41,7 @@ MODEL = genai.GenerativeModel(model_name=MODEL_NAME)
 class TranscriptInput(BaseModel):
     transcript: str
 
-# Response body for Swagger
+# Response body
 class FieldResponse(BaseModel):
     status: str
     response: str
@@ -45,21 +50,24 @@ class FieldResponse(BaseModel):
 async def extract_fields(data: TranscriptInput):
     try:
         prompt = generate_prompt()
-        response = MODEL.generate_content(prompt + "\n\n" + data.transcript)
+        full_prompt = prompt + "\n\n" + data.transcript
+        logging.info("📨 Sending prompt to model...")
+        response = MODEL.generate_content(full_prompt)
 
         try:
             parsed = json.loads(response.text)
         except json.JSONDecodeError:
-            parsed = response.text  # fallback to raw string if not clean JSON
+            parsed = response.text
 
+        logging.info("✅ Extraction completed.")
         return {
             "status": "success",
             "response": parsed
         }
 
     except Exception as e:
+        logging.error(f"❌ Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 def generate_prompt():
     return """
@@ -95,5 +103,3 @@ Respond strictly in raw JSON. Do NOT include any explanation or markdown. No ```
   ]
 }
 """
-
-
