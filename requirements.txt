@@ -11,4 +11,6 @@ python-dotenv
 google-generativeai
 matplotlib
 streamlit-lottie
+google-cloud-logging
+google-cloud-aiplatform
 
