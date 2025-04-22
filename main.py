@@ -1,3 +1,22 @@
+import json
+import os
+
+# Write the secret JSON string (from environment) to a temp file
+creds_path = "temp_gcp_key.json"
+with open(creds_path, "w") as f:
+    f.write(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
+
+# Point GCP SDKs to that file
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+
+
+
+
+
+
+
+
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
