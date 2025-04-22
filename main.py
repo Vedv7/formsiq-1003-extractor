@@ -1,59 +1,56 @@
-import os
-import json
-import logging
-from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from dotenv import load_dotenv
+import os
+import json
+import google.generativeai as genai
 
-import google.cloud.logging
-from google.cloud.logging.handlers import CloudLoggingHandler
-
-import vertexai
-from vertexai.preview.generative_models import GenerativeModel
-
-# --- Auth for Render ---
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/gcp-key.json"
-
-# --- Logging ---
-client = google.cloud.logging.Client()
-handler = CloudLoggingHandler(client)
-logging.getLogger().setLevel(logging.INFO)
-logging.getLogger().addHandler(handler)
-logger = logging.getLogger("formsiq.extractor")
-
-# --- Vertex AI Init ---
+# Load API Key from .env
 load_dotenv()
-vertexai.init(project="iconic-episode-256420", location="us-central1")
-model = GenerativeModel("gemini-1.5-flash")  # Use flash or 1.5-pro only if access enabled
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# --- FastAPI ---
-app = FastAPI(
-    title="Mortgage Field Extractor",
-    description="Extracts 1003 loan fields using Gemini AI",
-    version="1.0"
-)
+app = FastAPI(title="Mortgage Field Extractor", description="Extracts 1003 loan fields using Gemini AI", version="1.0")
 
+# Choose one of the available models
+def select_model():
+    available_models = [m.name for m in genai.list_models()]
+    print("✅ Available Models:", available_models)
+
+    # Prefer flash if you saw it working in console
+    for preferred in [
+        "models/gemini-1.5-flash-latest",
+        "models/gemini-2.0-flash-latest",
+        "models/gemini-1.5-pro-latest"
+    ]:
+        if preferred in available_models:
+            print(f"✅ Selected Model: {preferred}")
+            return preferred
+
+    raise RuntimeError("❌ No suitable Gemini model found. Available: " + ", ".join(available_models))
+
+# Load model
+MODEL_NAME = select_model()
+MODEL = genai.GenerativeModel(model_name=MODEL_NAME)
+
+# Request body
 class TranscriptInput(BaseModel):
     transcript: str
 
+# Response body for Swagger
 class FieldResponse(BaseModel):
     status: str
     response: str
 
-@app.post("/extract-fields", response_model=FieldResponse)
+@app.post("/extract-fields")
 async def extract_fields(data: TranscriptInput):
-    logger.info("📥 Received transcript for extraction")
-
     try:
         prompt = generate_prompt()
-        response = model.generate_content(prompt + "\n\n" + data.transcript)
+        response = MODEL.generate_content(prompt + "\n\n" + data.transcript)
 
         try:
             parsed = json.loads(response.text)
-            logger.info("✅ JSON parsed successfully")
         except json.JSONDecodeError:
-            parsed = response.text
-            logger.warning("⚠️ Response is not valid JSON")
+            parsed = response.text  # fallback to raw string if not clean JSON
 
         return {
             "status": "success",
@@ -61,9 +58,7 @@ async def extract_fields(data: TranscriptInput):
         }
 
     except Exception as e:
-        logger.error(f"❌ Extraction failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
 
 def generate_prompt():
     return """
@@ -99,5 +94,3 @@ Respond strictly in raw JSON. Do NOT include any explanation or markdown. No ```
   ]
 }
 """
-
-
