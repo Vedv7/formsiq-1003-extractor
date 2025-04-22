@@ -24,7 +24,7 @@ logger = logging.getLogger("formsiq.extractor")
 # --- Vertex Init ---
 load_dotenv()
 vertexai.init(project="iconic-episode-256420", location="us-central1")
-MODEL = GenerativeModel("gemini-1.5-pro")
+MODEL = GenerativeModel("gemini-1.5-flash-latest")
 
 # --- FastAPI ---
 app = FastAPI(
