@@ -305,7 +305,7 @@ if st.session_state.show_extractor:
         if not transcript or len(transcript) < 20:
             st.warning("⚠️ Please enter a valid call transcript with more meaningful content.")
             st.session_state.results = []  # Clear previous results
-
+            st.stop() 
         else:
             start_time = time.time()
             with st.spinner("Analyzing transcript..."):
