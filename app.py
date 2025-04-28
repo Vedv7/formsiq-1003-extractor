@@ -284,7 +284,7 @@ Do NOT return JSON, markdown formatting, or any additional explanation.
                 }
 
                 response = requests.post(
-                "http://localhost:10000/extract-audio-fields",
+                "https://formsiq-1003-extractor.onrender.com/extract-audio-fields",
                 files=files,
                 ) 
                 if response.status_code == 200:
