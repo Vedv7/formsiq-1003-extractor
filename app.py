@@ -13,7 +13,7 @@ import requests
 
 
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "gcp-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/gcp-key.json"
 
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
@@ -245,7 +245,7 @@ if st.session_state.show_extractor:
         # 🔄 Force uploader to reset visually by changing its key
         st.session_state.uploader_key = str(random.randint(1, 1_000_000))
      #Check if GCP key file exists
-    gcp_credentials_ok = os.path.exists("/etc/secrets/gcp-key.json")
+    gcp_credentials_ok = os.path.exists("/gcp-key.json")
 
     method_options = ["Paste Text", "Upload File"]
     if gcp_credentials_ok:
