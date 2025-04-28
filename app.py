@@ -9,7 +9,7 @@ from io import StringIO
 import streamlit.components.v1 as components
 from streamlit_lottie import st_lottie
 import requests
-
+import random
 # --- Credential Setup ---
 if "transcript" not in st.session_state:
     st.session_state.transcript = ""
@@ -20,7 +20,9 @@ if "uploader_key" not in st.session_state:
 
 # ✅ Fixed: write secret correctly
 with open("temp_gcp_key.json", "w") as f:
-    f.write(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"])  # no json.dump, use f.write
+    json_obj = json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
+    json.dump(json_obj, f)
+
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
 
