@@ -9,6 +9,9 @@ from io import StringIO
 import streamlit.components.v1 as components
 from streamlit_lottie import st_lottie
 import requests
+
+
+st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 st.write("Checking if /etc/secrets/ folder exists...")
 if os.path.exists("/etc/secrets"):
     st.success("/etc/secrets exists ✅")
@@ -18,7 +21,7 @@ else:
     st.error("/etc/secrets folder missing ❌")
 
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/gcp-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "gcp-key.json"
 
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
