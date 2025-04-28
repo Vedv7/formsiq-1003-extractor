@@ -11,14 +11,6 @@ from streamlit_lottie import st_lottie
 import requests
 
 
-st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
-st.write("Checking if /etc/secrets/ folder exists...")
-if os.path.exists("/etc/secrets"):
-    st.success("/etc/secrets exists ✅")
-    st.write("Listing files inside /etc/secrets:")
-    st.write(os.listdir("/etc/secrets"))
-else:
-    st.error("/etc/secrets folder missing ❌")
 
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "gcp-key.json"
