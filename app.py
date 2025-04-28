@@ -9,9 +9,13 @@ from io import StringIO
 import streamlit.components.v1 as components
 from streamlit_lottie import st_lottie
 import requests
-import tempfile
 
+IS_LOCAL = os.getenv("IS_LOCAL", "false").lower() == "true"
 
+if IS_LOCAL:
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "formsiq-gcloud-key.json"
+
+st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
 
 
@@ -240,7 +244,13 @@ if st.session_state.show_extractor:
 
         # 🔄 Force uploader to reset visually by changing its key
         st.session_state.uploader_key = str(random.randint(1, 1_000_000))
-    method_options = ["Paste Text", "Upload File", "Upload Audio"]
+
+
+
+    method_options = ["Paste Text", "Upload File"]
+    if IS_LOCAL:
+        method_options.append("Upload Audio")
+
     method = st.radio("Choose input method:", method_options)
 
 
@@ -256,7 +266,7 @@ if st.session_state.show_extractor:
             st.text_area("File Content Preview", value=st.session_state.transcript, height=250, disabled=True)
     
     
-    elif method == "Upload Audio":
+    elif method == "Upload Audio"  and IS_LOCAL:
         audio_file = st.file_uploader("Upload Call Audio", type=["wav", "mp3", "m4a"], key=st.session_state.get("uploader_key", "audio_upload"))
 
 
@@ -300,7 +310,7 @@ if st.session_state.show_extractor:
             start_time = time.time()
             with st.spinner("Analyzing transcript..."):
                 try:
-                    response = requests.post("https://formsiq-1003-extractor-production.up.railway.app/extract-fields", json={"transcript": transcript})
+                    response = requests.post("http://localhost:10000/extract-fields", json={"transcript": transcript})
                     end_time = time.time()
                     st.session_state.response_time = round(end_time - start_time, 2)
                     if response.status_code == 200:
