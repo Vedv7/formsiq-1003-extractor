@@ -4,22 +4,12 @@ from dotenv import load_dotenv
 import os
 import json
 import google.generativeai as genai
-import tempfile
+
 # Load API Key from .env
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Write credentials from ENV to temp file
-if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
-    credentials_content = os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as temp_cred:
-        temp_cred.write(credentials_content)
-        temp_cred.flush()
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_cred.name
-
 app = FastAPI(title="Mortgage Field Extractor", description="Extracts 1003 loan fields using Gemini AI", version="1.0")
-
-
 
 # Choose one of the available models
 def select_model():
@@ -104,4 +94,3 @@ Respond strictly in raw JSON. Do NOT include any explanation or markdown. No ```
   ]
 }
 """
-
