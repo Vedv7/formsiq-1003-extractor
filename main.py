@@ -1,39 +1,47 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 import json
-import asyncio
 import google.generativeai as genai
 
-# --- Load API Key from .env ---
+# Load API Key from .env
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# --- Hardcode Model Selection ---
-MODEL_NAME = "models/gemini-2.0-flash"
+app = FastAPI(title="Mortgage Field Extractor", description="Extracts 1003 loan fields using Gemini AI", version="1.0")
+
+# Choose one of the available models
+def select_model():
+    available_models = [m.name for m in genai.list_models()]
+    print("✅ Available Models:", available_models)
+
+    # Prefer flash if you saw it working in console
+    for preferred in [
+        "models/gemini-1.5-flash-latest",
+        "models/gemini-2.0-flash-latest",
+        "models/gemini-1.5-pro-latest"
+    ]:
+        if preferred in available_models:
+            print(f"✅ Selected Model: {preferred}")
+            return preferred
+
+    raise RuntimeError("❌ No suitable Gemini model found. Available: " + ", ".join(available_models))
+
+# Load model
+MODEL_NAME = select_model()
 MODEL = genai.GenerativeModel(model_name=MODEL_NAME)
 
-print(f"✅ Selected Gemini Model: {MODEL_NAME}")
-
-# --- FastAPI App ---
-app = FastAPI(
-    title="Mortgage Field Extractor",
-    description="Extracts 1003 loan fields using Gemini 2.0 Flash",
-    version="1.0"
-)
-
-# --- Request and Response Models ---
+# Request body
 class TranscriptInput(BaseModel):
     transcript: str
-from typing import Union
+
+# Response body for Swagger
 class FieldResponse(BaseModel):
     status: str
-    response: Union[str, dict]
+    response: str
 
-
-# --- /extract-fields Endpoint (Text Input) ---
-@app.post("/extract-fields", response_model=FieldResponse)
+@app.post("/extract-fields")
 async def extract_fields(data: TranscriptInput):
     try:
         prompt = generate_prompt()
@@ -42,7 +50,7 @@ async def extract_fields(data: TranscriptInput):
         try:
             parsed = json.loads(response.text)
         except json.JSONDecodeError:
-            parsed = response.text  # fallback if not clean JSON
+            parsed = response.text  # fallback to raw string if not clean JSON
 
         return {
             "status": "success",
@@ -50,58 +58,8 @@ async def extract_fields(data: TranscriptInput):
         }
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- /extract-audio-fields Endpoint (Audio Upload) ---
-@app.post("/extract-audio-fields", response_model=FieldResponse)
-async def extract_audio_fields(audio_file: UploadFile = File(...), prompt: str = Form(...)):
-    try:
-        # Step 1: Save uploaded audio temporarily
-        temp_audio_path = f"temp_{audio_file.filename}"
-        with open(temp_audio_path, "wb") as f:
-            file_content = await audio_file.read()
-            f.write(file_content)
-
-        print(f"🎵 Saved temp audio file: {temp_audio_path}, Size: {os.path.getsize(temp_audio_path)} bytes")
-
-        await asyncio.sleep(0.5)  # tiny wait to ensure file system saves
-
-        # Step 2: Upload audio file to Gemini
-        uploaded_file = genai.upload_file(temp_audio_path)
-
-        # Step 3: Send prompt + uploaded audio to Gemini
-        response = MODEL.generate_content(
-            contents=[
-                prompt,
-                uploaded_file
-            ],
-            generation_config={
-                "temperature": 0.3,
-                "top_p": 0.95
-            }
-        )
-
-        # Step 4: Clean up
-        os.remove(temp_audio_path)
-
-        try:
-            parsed = json.loads(response.text)
-        except json.JSONDecodeError:
-            parsed = {"transcript": response.text}
-
-        return {
-            "status": "success",
-            "response": parsed
-        }
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Audio extraction failed: {str(e)}")
-
-# --- Prompt for both text and audio extraction ---
 def generate_prompt():
     return """
 You are an expert mortgage assistant trained to extract information for the 1003 Uniform Residential Loan Application form from customer service call transcripts.
@@ -136,4 +94,3 @@ Respond strictly in raw JSON. Do NOT include any explanation or markdown. No ```
   ]
 }
 """
-
