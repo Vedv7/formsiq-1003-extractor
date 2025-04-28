@@ -13,14 +13,6 @@ import tempfile
 
 
 
-if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
-    temp_file.write(os.environ["GOOGLE_APPLICATION_CREDENTIALS"].encode())
-    temp_file.close()
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file.name
-
-st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
-
 
 
 if "show_extractor" not in st.session_state:
