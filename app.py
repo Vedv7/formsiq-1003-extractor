@@ -10,10 +10,6 @@ import streamlit.components.v1 as components
 from streamlit_lottie import st_lottie
 import requests
 
-IS_LOCAL = os.getenv("IS_LOCAL", "false").lower() == "true"
-
-if IS_LOCAL:
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "formsiq-gcloud-key.json"
 
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
@@ -247,9 +243,7 @@ if st.session_state.show_extractor:
 
 
 
-    method_options = ["Paste Text", "Upload File"]
-    if IS_LOCAL:
-        method_options.append("Upload Audio")
+    method_options = ["Paste Text", "Upload File","Upload Audio"]
 
     method = st.radio("Choose input method:", method_options)
 
@@ -266,40 +260,68 @@ if st.session_state.show_extractor:
             st.text_area("File Content Preview", value=st.session_state.transcript, height=250, disabled=True)
     
     
-    elif method == "Upload Audio"  and IS_LOCAL:
+    elif method == "Upload Audio":
         audio_file = st.file_uploader("Upload Call Audio", type=["wav", "mp3", "m4a"], key=st.session_state.get("uploader_key", "audio_upload"))
-
-
         if audio_file is not None:
-            if not st.session_state.get("audio_transcribed"):
+            st.info("Uploading audio for transcription and extraction...")
+            try:
+                prompt_text = """
+   You are a transcription assistant specialized in mortgage customer service calls.
 
-                def transcribe_audio(file):
-                    client = speech.SpeechClient()
-                    content = file.read()
-                    audio = speech.RecognitionAudio(content=content)
-                    config = speech.RecognitionConfig(
-                        encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
-                        language_code="en-US"
-                    )
-                    response = client.recognize(config=config, audio=audio)
-                    return " ".join([result.alternatives[0].transcript for result in response.results])
+Please transcribe the given audio into clear, readable conversational text with correct punctuation.
+- Identify speakers if possible (e.g., Customer: ..., Agent: ...).
+- Do not add timestamps.
+- Ignore background noise, music, or irrelevant sounds.
+- Only focus on the spoken conversation between the customer and the agent.
 
-                try:
-                    st.info("Transcribing audio...")
-                    transcript = transcribe_audio(audio_file)
-                    st.session_state.transcript = transcript
-                    st.session_state.audio_transcribed = True  # ✅ flag that transcription happened
-                    st.success("Transcription complete!")
+Respond with ONLY the full clean transcript text, nothing else.
+Do NOT return JSON, markdown formatting, or any additional explanation.
+"""
 
-                except Exception as e:
-                    st.error(f"❌ Transcription failed: {e}")
+                files = {
+                "audio_file": (audio_file.name, audio_file, audio_file.type),
+                "prompt": (None, prompt_text)
+                }
 
-        # Always show preview
-        st.text_area("Transcript Preview", value=st.session_state.transcript, height=200, disabled=True)
+                response = requests.post(
+                "http://localhost:8000/extract-audio-fields",
+                files=files,
+                ) 
+                if response.status_code == 200:
+                   st.success("Extraction complete!")
+                   resp_json = response.json()
+                   
+
+                # Check if response is a dictionary or string
+                   if isinstance(resp_json.get("response"), dict):
+                         fields = resp_json["response"].get("fields", [])
+                         transcribed_text = resp_json["response"].get("transcript", "") 
+                   else:
+                         # If response is just a string (text), fallback
+                         fields = []
+                         transcribed_text = resp_json.get("response", "")
+
+
+                # Save extracted fields
+                   st.session_state.results = fields
+
+                   if transcribed_text:
+                    st.session_state.transcript = transcribed_text
+                   else:
+                    st.session_state.transcript = "Transcript not available from Gemini."
+
+                else:
+                    st.error(f"❌ Extraction failed. Status code: {response.status_code}") 
+            
+            except Exception as e:
+                st.error(f"❌ Failed to process audio: {e}")
+             # Always show preview (after transcription)
+            st.text_area("Transcript Preview", value=st.session_state.transcript, height=200, disabled=True)
 
     
     col1, col2, col3 = st.columns(3)
 
+    
     if col1.button("Extract Fields"):
         transcript = st.session_state.transcript.strip()
         if not transcript or len(transcript) < 20:
