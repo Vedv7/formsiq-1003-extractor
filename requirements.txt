@@ -13,4 +13,5 @@ matplotlib
 streamlit-lottie
 google-cloud-logging
 google-cloud-aiplatform
+python-multipart
 
