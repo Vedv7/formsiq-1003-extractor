@@ -242,10 +242,14 @@ if st.session_state.show_extractor:
 
         # 🔄 Force uploader to reset visually by changing its key
         st.session_state.uploader_key = str(random.randint(1, 1_000_000))
+     #Check if GCP key file exists
+    gcp_credentials_ok = os.path.exists("/etc/secrets/gcp-key.json")
 
-
-
-    method_options = ["Paste Text", "Upload File", "Upload Audio"]
+    method_options = ["Paste Text", "Upload File"]
+    if gcp_credentials_ok:
+     method_options.append("Upload Audio")
+    else:
+     st.warning("🔒 Upload Audio disabled — GCP Credentials not available.")
     method = st.radio("Choose input method:", method_options)
 
 
