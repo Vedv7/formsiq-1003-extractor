@@ -10,10 +10,8 @@ import streamlit.components.v1 as components
 from streamlit_lottie import st_lottie
 import requests
 
-IS_LOCAL = os.getenv("IS_LOCAL", "false").lower() == "true"
 
-if IS_LOCAL:
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "formsiq-gcloud-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/gcp-key.json"
 
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
@@ -247,10 +245,7 @@ if st.session_state.show_extractor:
 
 
 
-    method_options = ["Paste Text", "Upload File"]
-    if IS_LOCAL:
-        method_options.append("Upload Audio")
-
+    method_options = ["Paste Text", "Upload File", "Upload Audio"]
     method = st.radio("Choose input method:", method_options)
 
 
@@ -266,7 +261,7 @@ if st.session_state.show_extractor:
             st.text_area("File Content Preview", value=st.session_state.transcript, height=250, disabled=True)
     
     
-    elif method == "Upload Audio"  and IS_LOCAL:
+    elif method == "Upload Audio":
         audio_file = st.file_uploader("Upload Call Audio", type=["wav", "mp3", "m4a"], key=st.session_state.get("uploader_key", "audio_upload"))
 
 
