@@ -20,8 +20,8 @@ if "uploader_key" not in st.session_state:
 
 # ✅ Fixed: write secret correctly
 with open("temp_gcp_key.json", "w") as f:
-    json_obj = json.loads(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
-    json.dump(json_obj, f)
+    json.dump(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"], f)
+
 
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
