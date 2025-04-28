@@ -1,33 +1,23 @@
 import os
-import streamlit as st
-import json
 from google.cloud import speech
 import time
+import streamlit as st
 import requests
+import json
 import matplotlib.pyplot as plt
 from io import StringIO
 import streamlit.components.v1 as components
 from streamlit_lottie import st_lottie
 import requests
-import random
-# --- Credential Setup ---
-if "transcript" not in st.session_state:
-    st.session_state.transcript = ""
-if "audio_transcribed" not in st.session_state:
-    st.session_state.audio_transcribed = False
-if "uploader_key" not in st.session_state:
-    st.session_state.uploader_key = "audio_upload"
-
-# ✅ Fixed: write secret correctly
-with open("temp_gcp_key.json", "w") as f:
-    json.dump(st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"], f)
 
 
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_gcp_key.json"
 
-# --- Streamlit App ---
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/gcp-key.json"
+
 st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
+
+
 
 if "show_extractor" not in st.session_state:
     st.session_state.show_extractor = False
@@ -41,7 +31,6 @@ def load_lottie_url(url):
 lottie_ai = load_lottie_url("https://assets4.lottiefiles.com/packages/lf20_u4yrau.json")
 lottie_docs = load_lottie_url("https://assets6.lottiefiles.com/packages/lf20_touohxv0.json")
 
-# --- Your CSS (unchanged) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap');
@@ -51,6 +40,7 @@ html, body {
     max-width: 100vw;
     box-sizing: border-box;
 }
+
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
 }
@@ -114,53 +104,157 @@ section.main > div {
     width: 100%;
     max-width: 100vw;
     overflow: hidden;
+    ...
 }
+
+}
+.left-block {
+    flex: 1;
+}
+.right-block {
+    flex: 1.1;
+    padding-left: 2vw;
+}
+.title {
+    font-size: 3.2em;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 0.5rem;
+}
+.subtitle {
+    color: #c9d1d9;
+    font-size: 1.1em;
+    margin-bottom: 2rem;
+}
+.stButton > button {
+    font-size: 1.1em;
+    background-color: #00CFFF;
+    color: black;
+    border-radius: 8px;
+    padding: 10px 30px;
+    box-shadow: 0 0 20px #00CFFF;
+    transition: 0.3s ease-in-out;
+}
+.stButton > button:hover {
+    background-color: #0ff;
+    transform: scale(1.05);
+}
+
+
+
 </style>
 """, unsafe_allow_html=True)
 
-# --- Welcome Page ---
+# --- Welcome Section ---
 if not st.session_state.show_extractor:
+    st.markdown("""
+        <style>
+            .logo {
+                margin-bottom: -10px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Logo at top
     st.image("formsiq-logo.png", width=50)
+
+    st.markdown("""
+    <div class="centered-container" style="padding-top: 16px;">
+""", unsafe_allow_html=True)
+
+
     col1, col2 = st.columns([1, 1.2])
 
     with col1:
-        st.title("Welcome to FormsiQ")
-        st.markdown("GenAI-powered 1003 field extraction from call transcripts — no more manual data entry.")
-
+        st.markdown('<div class="title">Welcome to <span style="color:#00E0FF;">FormsiQ</span></div>', unsafe_allow_html=True)
+        st.markdown('<div class="subtitle">GenAI-powered 1003 field extraction from call transcripts — no more manual data entry.</div>', unsafe_allow_html=True)
+        
         if st.button("Get Started", key="start"):
             st.session_state.show_extractor = True
             st.rerun()
 
     with col2:
-        st.subheader("Proven performance at scale.")
-        st.caption("Gen AI-powered processing for millions of mortgage transcripts.")
-        with st.expander("Example Transcript"):
+        st.markdown("<h2 style='font-size: 40px; font-weight: 800;'>Proven performance at scale.</h2>", unsafe_allow_html=True)
+
+        st.caption("Gen AI-powered processing for millions of mortgage transcripts — reliably and fast.")
+        st.markdown("### Example Transcript")
+        with st.expander("See Example"):
             st.code(
                 "Hi, I'm Sarah Thompson. I'd like to apply for a $400,000 loan to purchase a single family home at 789 Maple Drive.",
                 language="markdown",
             )
 
-# --- Extractor Section ---
-if st.session_state.show_extractor:
+        st.markdown("---")
 
+        colx1, colx2 = st.columns(2)
+        with colx1:
+            st.markdown("#### 📞 300+")
+            st.caption("Call transcripts parsed")
+
+        with colx2:
+            st.markdown("#### 🧾 1,000+")
+            st.caption("Mortgage field entries auto-filled")
+
+        colx3, colx4 = st.columns(2)
+        with colx3:
+            st.markdown("#### ⚡ < 10 sec")
+            st.caption("Avg. processing time")
+
+        with colx4:
+            st.markdown("#### 🔐 SOC 2 Ready")
+            st.caption("Security-first by design")
+
+        st.markdown("#### 🎯 98%+")
+        st.caption("Accuracy in field extraction")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+
+
+# --- Extractor Section ---
+if st.session_state.show_extractor:     
+
+   
     st.sidebar.header("Summary")
+    st.markdown("""
+    <div class="custom-success-box">
+    🔹 <b>Note:</b> 🔒 Privacy First - Transcripts are processed securely. No data is stored or shared.
+    </div>
+    """, unsafe_allow_html=True)
+
     st.title("FormsiQ – 1003 Transcript Extractor")
     st.markdown("Paste a call transcript below to extract key 1003 loan application fields with confidence scores.")
 
+    if "transcript" not in st.session_state:
+        st.session_state.transcript = ""
     if "results" not in st.session_state:
         st.session_state.results = []
 
     def clear_results_only():
         st.session_state.results = []
 
+    import random
+
     def clear_everything():
         keys_to_clear = ["transcript", "results", "response_time","audio_transcribed","audio_upload"]
+
         for key in keys_to_clear:
             st.session_state.pop(key, None)
-        st.session_state.uploader_key = str(random.randint(1, 1_000_000))
 
-    method = st.radio("Choose input method:", ["Paste Text", "Upload File", "Upload Audio"])
-    st.session_state.input_method = method
+        # 🔄 Force uploader to reset visually by changing its key
+        st.session_state.uploader_key = str(random.randint(1, 1_000_000))
+     #Check if GCP key file exists
+    gcp_credentials_ok = os.path.exists("/etc/secrets/gcp-key.json")
+
+    method_options = ["Paste Text", "Upload File"]
+    if gcp_credentials_ok:
+     method_options.append("Upload Audio")
+    else:
+     st.warning("🔒 Upload Audio disabled — GCP Credentials not available.")
+    method = st.radio("Choose input method:", method_options)
+
+
 
     if method == "Paste Text":
         st.text_area("Transcript Input", key="transcript", height=250, placeholder='Type your transcript...')
@@ -171,40 +265,48 @@ if st.session_state.show_extractor:
             stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
             st.session_state.transcript = f'"{stringio.read().strip()}"'
             st.text_area("File Content Preview", value=st.session_state.transcript, height=250, disabled=True)
-
+    
+    
     elif method == "Upload Audio":
-        audio_file = st.file_uploader("Upload Call Audio", type=["wav", "mp3", "m4a"], key=st.session_state.uploader_key)
-        if audio_file is not None and not st.session_state.get("audio_transcribed"):
+        audio_file = st.file_uploader("Upload Call Audio", type=["wav", "mp3", "m4a"], key=st.session_state.get("uploader_key", "audio_upload"))
 
-            def transcribe_audio(file):
-                client = speech.SpeechClient()
-                content = file.read()
-                audio = speech.RecognitionAudio(content=content)
-                config = speech.RecognitionConfig(
-                    encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
-                    language_code="en-US"
-                )
-                response = client.recognize(config=config, audio=audio)
-                return " ".join([result.alternatives[0].transcript for result in response.results])
 
-            try:
-                st.info("Transcribing audio...")
-                transcript = transcribe_audio(audio_file)
-                st.session_state.transcript = transcript
-                st.session_state.audio_transcribed = True
-                st.success("Transcription complete!")
-            except Exception as e:
-                st.error(f"❌ Transcription failed: {e}")
+        if audio_file is not None:
+            if not st.session_state.get("audio_transcribed"):
 
+                def transcribe_audio(file):
+                    client = speech.SpeechClient()
+                    content = file.read()
+                    audio = speech.RecognitionAudio(content=content)
+                    config = speech.RecognitionConfig(
+                        encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
+                        language_code="en-US"
+                    )
+                    response = client.recognize(config=config, audio=audio)
+                    return " ".join([result.alternatives[0].transcript for result in response.results])
+
+                try:
+                    st.info("Transcribing audio...")
+                    transcript = transcribe_audio(audio_file)
+                    st.session_state.transcript = transcript
+                    st.session_state.audio_transcribed = True  # ✅ flag that transcription happened
+                    st.success("Transcription complete!")
+
+                except Exception as e:
+                    st.error(f"❌ Transcription failed: {e}")
+
+        # Always show preview
         st.text_area("Transcript Preview", value=st.session_state.transcript, height=200, disabled=True)
 
+    
     col1, col2, col3 = st.columns(3)
 
     if col1.button("Extract Fields"):
         transcript = st.session_state.transcript.strip()
         if not transcript or len(transcript) < 20:
             st.warning("⚠️ Please enter a valid call transcript with more meaningful content.")
-            st.session_state.results = []
+            st.session_state.results = []  # Clear previous results
+            st.stop() 
         else:
             start_time = time.time()
             with st.spinner("Analyzing transcript..."):
@@ -215,12 +317,24 @@ if st.session_state.show_extractor:
                     if response.status_code == 200:
                         st.session_state.results = response.json()["response"].get("fields", [])
                         if not st.session_state.results:
-                            st.info("🤖 No extractable information found.")
+                            st.info("🤖 We didn’t find any extractable information. Please try again with a more complete transcript.")
+                            st.session_state.results = []  # Clear previous results
+                        else:
+                            components.html("""
+                                <script>
+                                    setTimeout(() => {
+                                        const target = window.parent.document.getElementById("extract-results");
+                                        if (target) {
+                                            target.scrollIntoView({ behavior: "smooth", block: "start" });
+                                        }
+                                    }, 300);
+                                </script>
+                            """, height=1)
                     else:
-                        st.error("❌ API call failed.")
+                        st.error("❌ Something went wrong with the API. Please try again.")
                 except Exception:
-                    st.error("❌ Extraction error.")
-                    st.session_state.results = []
+                    st.error("❌ Couldn’t extract data. Try again with a better transcript.")
+                    st.session_state.results = []  # Clear previous results
 
     if col2.button("Clear Results"):
         clear_results_only()
@@ -229,8 +343,12 @@ if st.session_state.show_extractor:
         clear_everything()
         st.rerun()
 
+    st.markdown("<div id='extract-results'></div>", unsafe_allow_html=True)
+
     if st.session_state.results:
-        st.success("🎉 Fields extracted successfully!")
+        st.markdown("<div class='custom-success-box'>🎉 Fields extracted successfully!</div>", unsafe_allow_html=True)
+        st.markdown("### Extracted Information")
+
         for field in st.session_state.results:
             confidence = field['confidence_score']
             color_class = (
@@ -248,4 +366,21 @@ if st.session_state.show_extractor:
 
         json_output = json.dumps(st.session_state.results, indent=2)
         st.download_button("Download JSON", data=json_output, file_name="extracted_fields.json", mime="application/json")
+
+        st.sidebar.markdown(f"""
+        <div class='sidebar-box'>
+        ✅ Fields Extracted: {len(st.session_state.results)}
+        </div>
+        """, unsafe_allow_html=True)
+        if (
+            "response_time" in st.session_state and 
+            st.session_state.response_time is not None and 
+            st.session_state.get("input_method") != "Upload Audio"
+       ):
+            st.sidebar.markdown(f"""
+            <div class='sidebar-box'>
+            ⏱️Response Time: {st.session_state.response_time} sec
+            </div>
+            """, unsafe_allow_html=True)
+
 
