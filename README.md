@@ -16,18 +16,17 @@
 ## Table of contents
 
 1. [Executive summary](#executive-summary)  
-2. [System context](#system-context)  
-3. [Architecture](#architecture)  
-4. [End-to-end workflows](#end-to-end-workflows)  
-5. [Deployment topology](#deployment-topology)  
-6. [API reference](#api-reference)  
-7. [Configuration](#configuration)  
-8. [Security & operations](#security--operations)  
-9. [Quality & evaluation](#quality--evaluation)  
-10. [Repository layout](#repository-layout)  
-11. [Local development](#local-development)  
-12. [Roadmap](#roadmap)  
-13. [License](#license)  
+2. [System architecture](#system-architecture)  
+3. [Request workflow](#request-workflow)  
+4. [Deployment](#deployment)  
+5. [API reference](#api-reference)  
+6. [Configuration](#configuration)  
+7. [Security & operations](#security--operations)  
+8. [Quality & evaluation](#quality--evaluation)  
+9. [Repository layout](#repository-layout)  
+10. [Local development](#local-development)  
+11. [Roadmap](#roadmap)  
+12. [License](#license)  
 
 ---
 
@@ -44,78 +43,52 @@ Mortgage intake teams routinely transcribe or read borrower conversations and ma
 
 ---
 
-## System context
+## System architecture
 
-High-level actors and boundaries:
-
-```mermaid
-flowchart LR
-    subgraph Clients
-        A[Analyst / LO]
-        B[Automation / LOS]
-    end
-    subgraph FormsiQ
-        UI[Streamlit UI]
-        API[FastAPI API]
-        CORE[core.py — RAG + JSON recovery]
-        LLM[Google Gemini]
-    end
-    subgraph Optional
-        STT[Google Speech-to-Text]
-    end
-    A --> UI
-    UI -->|HTTPS JSON| API
-    B -->|HTTPS JSON| API
-    API --> CORE
-    API --> LLM
-    UI -.->|IS_LOCAL + GCP| STT
-```
-
----
-
-## Architecture
-
-Logical layers (single-tenant reference deployment):
+Actors, app layers, and external services in one view:
 
 ```mermaid
 flowchart TB
-    subgraph Presentation
-        S[Streamlit app.py]
+    subgraph Clients
+        LO[Analyst / LO]
+        AUTO[Automation / LOS]
     end
-    subgraph Application
-        F[FastAPI main.py]
+    subgraph App
+        UI[Streamlit app.py]
+        API[FastAPI main.py]
     end
     subgraph Domain
-        C[core.py — retrieval + parse recovery]
+        CORE[core.py — RAG + JSON recovery]
         K[knowledge/1003_reference.md]
         M[schemas/extraction.py]
     end
     subgraph External
-        G[Google Gemini API]
-        E[Google Embeddings API]
+        GEM[Gemini API]
+        EMB[Embeddings API]
     end
-    S -->|HTTP| F
-    F --> C
-    C --> K
-    C --> E
-    F --> G
-    F --> M
+    LO --> UI
+    UI -->|HTTPS JSON| API
+    AUTO -->|HTTPS JSON| API
+    API --> CORE
+    CORE --> K
+    CORE --> EMB
+    API --> GEM
+    API --> M
+    UI -.->|optional IS_LOCAL + GCP| STT[Speech-to-Text]
 ```
-
-**Responsibilities**
 
 | Layer | Responsibility |
 |-------|----------------|
-| **Presentation** | Input capture (paste, `.txt`, `.pdf` text, optional audio when configured), results display, export JSON. |
-| **Application** | REST contract, async request handling, lazy Gemini client init, orchestration. |
-| **Domain** | RAG chunk retrieval (embedding + keyword fallback), model-output JSON extraction, Pydantic validation. |
-| **External** | Gemini generation; embedding API for RAG when `GEMINI_API_KEY` is available at warmup. |
+| **Clients** | Humans or systems consuming UI or REST. |
+| **App** | Streamlit for operator UX; FastAPI for `/extract-fields`, `/health`, `/ready`. |
+| **Domain** | Retrieval over `knowledge/`, JSON salvage, Pydantic validation. |
+| **External** | Gemini generation; embeddings for RAG when configured. |
 
 ---
 
-## End-to-end workflows
+## Request workflow
 
-### A. Synchronous extraction (API)
+`POST /extract-fields` — synchronous path through the stack:
 
 ```mermaid
 sequenceDiagram
@@ -139,57 +112,28 @@ sequenceDiagram
     API-->>Client: 200 {status, response}
 ```
 
-### B. UI-driven flow (operator)
-
-```mermaid
-flowchart TD
-    Start([Operator opens UI]) --> Input{Input mode}
-    Input -->|Paste / file| T[Transcript text]
-    Input -->|PDF| P[pypdf text extract]
-    Input -->|Audio IS_LOCAL| A[Google STT]
-    P --> T
-    A --> T
-    T --> POST[POST to API_BASE_URL /extract-fields]
-    POST --> OK{HTTP 200?}
-    OK -->|yes| Show[Render field cards + confidence]
-    OK -->|no| Err[Show error / retry]
-```
-
-### C. Container startup (Docker Compose)
-
-```mermaid
-flowchart LR
-    subgraph compose [docker compose]
-        API[api :8000]
-        UI[ui :8501]
-    end
-    API -->|healthy| UI
-    UI -->|API_BASE_URL=http://api:8000| API
-```
-
-The `ui` service waits until `api` passes its **HTTP health check** (`GET /health`) so the browser does not hit a cold API during container bring-up.
-
 ---
 
-## Deployment topology
+## Deployment
+
+Docker Compose runs **API** and **UI** on the host; the UI container calls the API by service name. The `ui` service waits until `api` passes **`GET /health`** so the browser does not hit a cold API during bring-up.
 
 ```mermaid
 flowchart TB
     subgraph Host
         DC[docker compose -p formsiq]
     end
-    subgraph Network formsiq_default
-        API[api container\nuvicorn main:app]
-        UI[ui container\nstreamlit app.py]
+    subgraph Containers
+        API[api :8000 — uvicorn main:app]
+        UI[ui :8501 — streamlit app.py]
     end
     DC --> API
     DC --> UI
-    Internet((Internet)) --> API
-    Browser((User browser)) --> UI
-    API --> Internet
+    Br((Browser)) -->|localhost:8501| UI
+    Br -.->|optional localhost:8000 /docs| API
+    UI -->|API_BASE_URL=http://api:8000| API
+    API -->|HTTPS| Cloud((Gemini / Google APIs))
 ```
-
-**Ports**
 
 | Service | Host port | Purpose |
 |---------|-----------|---------|
