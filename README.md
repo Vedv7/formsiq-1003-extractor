@@ -1,10 +1,10 @@
 # FormsiQ
 
-AI-powered mortgage transcript intelligence for extracting structured **1003 loan application fields** from borrower conversations.
+**Turn mortgage call transcripts into structured 1003 (URLA) loan data** — names, income, property, loan terms, and more — as **validated JSON** with **confidence scores**, ready for LOS, CRM, or underwriting workflows. Optional **PDF text** upload and **local speech-to-text** for richer inputs.
 
-Convert unstructured mortgage call transcripts into validated JSON — built for speed, reliability, and downstream mortgage workflows.
+**Stack:** Streamlit UI · FastAPI · Google Gemini · optional **RAG grounding** (internal 1003 reference) · **Pydantic** validation · **Docker Compose** (API + UI).
 
-Built with Python, **FastAPI**, **Streamlit**, **Google Gemini**, optional **RAG** (embeddings over an internal 1003 reference), **Pydantic** response validation, **Docker Compose** (API + UI), and optional **Google Speech-to-Text** for local audio uploads.
+> **GitHub “About” (copy this):** *Gemini-powered 1003 URLA field extraction from transcripts and documents — FastAPI + Streamlit, schema-validated JSON, optional RAG, Docker-ready.*
 
 ---
 
