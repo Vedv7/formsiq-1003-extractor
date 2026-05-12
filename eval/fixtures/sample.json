@@ -1,0 +1,12 @@
+{
+  "id": "sample-1",
+  "transcript": "Hi, my name is John Doe. I make $120,000 annually and I am applying for a home purchase loan for $400,000 on a single family home at 789 Maple Drive, Austin TX.",
+  "gold_fields": {
+    "Borrower Name": "John Doe",
+    "Annual Income": "$120,000",
+    "Loan Amount": "$400,000",
+    "Property Address": "789 Maple Drive, Austin TX",
+    "Loan Purpose": "purchase",
+    "Property Type": "single family home"
+  }
+}

@@ -1,0 +1,52 @@
+# Requires GEMINI_API_KEY: create a .env in this folder (see .env.example) or export it before `docker compose up`.
+# Project name (optional): docker compose -p formsiq up
+
+services:
+  api:
+    build: .
+    command:
+      - uvicorn
+      - main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+    ports:
+      - "8000:8000"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      USE_RAG: "${USE_RAG:-true}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
+        ]
+      interval: 8s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
+
+  ui:
+    build: .
+    command:
+      - streamlit
+      - run
+      - app.py
+      - --server.address
+      - "0.0.0.0"
+      - --server.port
+      - "8501"
+      - --server.enableCORS
+      - "false"
+      - --server.enableXsrfProtection
+      - "false"
+    ports:
+      - "8501:8501"
+    environment:
+      API_BASE_URL: "http://api:8000"
+    depends_on:
+      api:
+        condition: service_healthy

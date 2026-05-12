@@ -4,7 +4,7 @@ AI-powered mortgage transcript intelligence for extracting structured **1003 loa
 
 Convert unstructured mortgage call transcripts into validated JSON — built for speed, reliability, and downstream mortgage workflows.
 
-Built with Python, FastAPI, and Google Gemini.
+Built with Python, **FastAPI**, **Streamlit**, **Google Gemini**, optional **RAG** (embeddings over an internal 1003 reference), **Pydantic** response validation, **Docker Compose** (API + UI), and optional **Google Speech-to-Text** for local audio uploads.
 
 ---
 
@@ -54,7 +54,7 @@ FormsiQ works directly from borrower conversations.
 | Transcripts Processed | 300+ |
 | Mortgage Fields Extracted | 1,000+ |
 | Average Processing Time | <10 sec |
-| Extraction Accuracy | 98%+ |
+| Extraction Accuracy | 98%+ (directional; replace with your own held-out eval) |
 
 ---
 
@@ -111,23 +111,33 @@ Handles request validation and response serialization using FastAPI.
 Uses Gemini for transcript understanding and mortgage field extraction.
 
 ### Validation Layer
-Parses model outputs and enforces strict JSON formatting.
+Pydantic models validate each extracted field (names, string values, confidence between 0 and 1).
 
 ### Recovery Layer
-Handles malformed model responses with structured fallback parsing.
+Strips markdown code fences and salvages a JSON object when the model adds extra prose.
 
 ---
 
 ## Repository Layout
 
-```bash
-formsiq/
-├── app.py
-├── prompts/
+```text
+.
+├── app.py                 # Streamlit UI
+├── main.py                # FastAPI app (lazy Gemini init)
+├── core.py                # JSON recovery + RAG retrieval
+├── eval/
+│   ├── run_eval.py        # Field-level accuracy vs gold fixtures
+│   └── fixtures/*.json    # Labeled transcripts for eval
+├── knowledge/
+│   └── 1003_reference.md  # RAG grounding chunks
 ├── schemas/
-├── utils/
+│   └── extraction.py      # Pydantic response models
+├── scripts/
+│   ├── up.ps1 / up.sh     # Bootstrap .env + docker compose
 ├── tests/
-├── assets/
+├── Dockerfile
+├── docker-compose.yml
+├── Makefile
 ├── requirements.txt
 └── README.md
 ```
@@ -157,23 +167,61 @@ Create a `.env` file:
 
 ```env
 GEMINI_API_KEY=your_api_key_here
+USE_RAG=true
+# Optional for Streamlit → local API instead of hosted URL
+# API_BASE_URL=http://localhost:8000
 ```
 
 ---
 
-## Run Locally
+## Run locally
 
-Start the FastAPI server:
+**API only** (OpenAPI at `/docs`):
 
 ```bash
-uvicorn app:app --reload
+uvicorn main:app --reload
 ```
 
-Swagger API docs:
+**Streamlit UI** (in another terminal):
 
-```text
-http://localhost:8000/docs
+```bash
+streamlit run app.py
 ```
+
+**Docker (API + UI)**
+
+From the repo root, with `GEMINI_API_KEY` in `.env` (Compose loads it for variable substitution):
+
+```bash
+docker compose -p formsiq up --build
+```
+
+Or use the helper (creates `.env` from `.env.example` if missing):
+
+```powershell
+.\scripts\up.ps1
+```
+
+```bash
+chmod +x scripts/up.sh && ./scripts/up.sh
+```
+
+```bash
+make up
+```
+
+- API: `http://localhost:8000/docs` — **`GET /health`** (process up; reports whether `GEMINI_API_KEY` is set), **`GET /ready`** (Gemini model can be initialized; calls Google).
+- UI: `http://localhost:8501` — calls the API at `http://api:8000` inside Compose.
+
+**Measured accuracy (resume-style %)**  
+Add JSON files under `eval/fixtures/` (see `eval/fixtures/sample.json`). With the API running:
+
+```bash
+set API_BASE_URL=http://127.0.0.1:8000
+python eval/run_eval.py
+```
+
+Use the printed **Overall** line as a defensible field-level exact-match rate on your gold set (tune `gold_fields` labels to match how you want to score).
 
 ---
 
@@ -203,10 +251,13 @@ http://localhost:8000/docs
         "field_value": "John Doe",
         "confidence_score": 0.96
       }
-    ]
+    ],
+    "grounding_sources": ["1003 URLA — Borrower identity"]
   }
 }
 ```
+
+`grounding_sources` lists titles of internal reference chunks used when RAG is enabled (may be empty if `USE_RAG=false` or retrieval returns nothing).
 
 ---
 
@@ -223,7 +274,7 @@ FormsiQ is built around four engineering principles:
 
 ## Roadmap
 
-- Audio-to-text integration
+- Broader audio-to-text deployment (beyond local `IS_LOCAL` + Google Speech)
 - OCR document extraction
 - Multi-language transcript support
 - LOS integration

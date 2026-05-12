@@ -1,17 +1,14 @@
-# For Streamlit frontend
-streamlit
-requests
-google-cloud-speech
-
-# For FastAPI backend (already present)
+# Full stack (API + Streamlit) — single install surface
 fastapi
-uvicorn
+uvicorn[standard]
 pydantic
 python-dotenv
-google-generativeai
-matplotlib
-streamlit-lottie
-google-cloud-logging
-google-cloud-aiplatform
 python-multipart
+google-generativeai
 
+streamlit
+requests
+pypdf
+
+# Optional: local audio transcription (set IS_LOCAL=true + GCP creds)
+google-cloud-speech

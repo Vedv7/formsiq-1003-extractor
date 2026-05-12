@@ -4,13 +4,12 @@ import time
 import streamlit as st
 import requests
 import json
-import matplotlib.pyplot as plt
-from io import StringIO
+from io import BytesIO, StringIO
 import streamlit.components.v1 as components
-from streamlit_lottie import st_lottie
-import requests
+from pypdf import PdfReader
 
 IS_LOCAL = os.getenv("IS_LOCAL", "false").lower() == "true"
+API_BASE_URL = os.getenv("API_BASE_URL", "https://formsiq-1003-extractor.onrender.com").rstrip("/")
 
 if IS_LOCAL:
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "formsiq-gcloud-key.json"
@@ -21,15 +20,6 @@ st.set_page_config(page_title="FormsiQ Extractor", layout="wide")
 
 if "show_extractor" not in st.session_state:
     st.session_state.show_extractor = False
-
-def load_lottie_url(url):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-lottie_ai = load_lottie_url("https://assets4.lottiefiles.com/packages/lf20_u4yrau.json")
-lottie_docs = load_lottie_url("https://assets6.lottiefiles.com/packages/lf20_touohxv0.json")
 
 st.markdown("""
 <style>
@@ -104,9 +94,6 @@ section.main > div {
     width: 100%;
     max-width: 100vw;
     overflow: hidden;
-    ...
-}
-
 }
 .left-block {
     flex: 1;
@@ -259,11 +246,24 @@ if st.session_state.show_extractor:
         st.text_area("Transcript Input", key="transcript", height=250, placeholder='Type your transcript...')
 
     elif method == "Upload File":
-        uploaded_file = st.file_uploader("Upload Transcript File", type=["txt"], key=st.session_state.get("uploader_key", "upload_file"))
+        uploaded_file = st.file_uploader(
+            "Upload transcript (.txt) or document (.pdf)",
+            type=["txt", "pdf"],
+            key=st.session_state.get("uploader_key", "upload_file"),
+        )
         if uploaded_file:
-            stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-            st.session_state.transcript = f'"{stringio.read().strip()}"'
-            st.text_area("File Content Preview", value=st.session_state.transcript, height=250, disabled=True)
+            name = (uploaded_file.name or "").lower()
+            raw = uploaded_file.getvalue()
+            if name.endswith(".pdf"):
+                reader = PdfReader(BytesIO(raw))
+                parts = []
+                for page in reader.pages:
+                    parts.append(page.extract_text() or "")
+                text = "\n".join(parts).strip()
+            else:
+                text = StringIO(raw.decode("utf-8", errors="replace")).read().strip()
+            st.session_state.transcript = text
+            st.text_area("File content preview", value=st.session_state.transcript, height=250, disabled=True)
     
     
     elif method == "Upload Audio"  and IS_LOCAL:
@@ -310,7 +310,11 @@ if st.session_state.show_extractor:
             start_time = time.time()
             with st.spinner("Analyzing transcript..."):
                 try:
-                    response = requests.post("https://formsiq-1003-extractor.onrender.com/extract-fields", json={"transcript": transcript})
+                    response = requests.post(
+                        f"{API_BASE_URL}/extract-fields",
+                        json={"transcript": transcript},
+                        timeout=120,
+                    )
                     end_time = time.time()
                     st.session_state.response_time = round(end_time - start_time, 2)
                     if response.status_code == 200:

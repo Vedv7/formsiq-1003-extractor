@@ -1,0 +1,12 @@
+venv
+.venv
+__pycache__
+.git
+.env
+*.pyc
+temp_audio_upload
+.pytest_cache
+.mypy_cache
+.idea
+.vscode
+formsiq-gcloud-key.json
